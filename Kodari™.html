@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kodari™ – QR Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background: #0e0e10;
+      color: #f1f1f1;
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header, footer {
+      text-align: center;
+      padding: 1rem;
+      background: #1a1a1d;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #ffffff;
+    }
+
+    main.container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      width: 100vw;
+      min-height: 100vh;
+    }
+
+    .generator-box {
+      width: 100vw;
+      max-width: 700px;
+      background: #1a1a1d;
+      padding: 2rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+    }
+
+    select, input, button, textarea {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      border: none;
+      font-size: 1rem;
+      background: #2a2a30;
+      color: #f1f1f1;
+    }
+
+    button {
+      background: #7f5af0;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #6243d2;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .controls .color-input {
+      flex: 1;
+    }
+
+    .qr-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    #qrPreview canvas {
+      border-radius: 1rem;
+      max-width: 100%;
+    }
+
+    .download-btn {
+      margin-top: 1rem;
+      background: #4ade80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .download-btn:hover {
+      background: #22c55e;
+    }
+
+    .download-btn svg {
+      width: 1rem;
+      height: 1rem;
+      fill: white;
+    }
+
+    footer {
+      font-size: 0.875rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kodari™</h1>
+    <p>Genera codici QR per ogni occasione</p>
+  </header>
+
+  <main class="container">
+    <div class="generator-box">
+      <select id="qrType">
+        <option value="url">Link (URL)</option>
+        <option value="email">Email</option>
+        <option value="text">Testo libero</option>
+        <option value="vcard">Contatto (vCard)</option>
+        <option value="wifi">WiFi</option>
+        <option value="tel">Telefono</option>
+        <option value="geo">Posizione (lat, lon)</option>
+        <option value="fiscalcode">Codice fiscale</option>
+        <option value="whatsapp">WhatsApp</option>
+      </select>
+
+      <div id="inputFields"></div>
+
+      <div class="controls">
+        <input type="text" id="fileName" placeholder="Nome file (es. biglietto-visita)" />
+        <input type="color" id="qrColor" class="color-input" value="#000000" title="Colore QR" />
+        <input type="color" id="qrGradient" class="color-input" value="#ffffff" title="Secondo colore (sfumatura)" />
+        <input type="file" id="qrLogo" accept="image/*" title="Logo al centro" />
+      </div>
+
+      <div class="controls">
+        <label><input type="checkbox" id="transparentBg"> Sfondo trasparente</label>
+        <label>Occhi: <select id="eyeStyle">
+          <option value="square">Squadrati</option>
+          <option value="circle">Arrotondati</option>
+        </select></label>
+        <label>Punti: <select id="dotShape">
+          <option value="square">Squadrati</option>
+          <option value="dots">Arrotondati</option>
+        </select></label>
+        <label>QR: <select id="overallStyle">
+          <option value="square">Squadrato</option>
+          <option value="dots">Arrotondato</option>
+        </select></label>
+      </div>
+
+      <button onclick="generateQR()">Genera QR</button>
+
+      <div class="qr-container">
+        <div id="qrPreview"></div>
+        <button class="download-btn" onclick="downloadQR()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 16l4-5h-3V4h-2v7H8zM5 18h14v2H5z"/></svg>
+          Scarica PNG
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 Kodari™ - Creted by Nexiquar™ -Tutti i diritti riservati
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling/lib/qr-code-styling.js"></script>
+  <script>
+    const inputFields = document.getElementById("inputFields");
+    const qrPreview = document.getElementById("qrPreview");
+
+    const templates = {
+      url: '<input type="text" placeholder="https://..." id="data">',
+      email: '<input type="email" placeholder="esempio@esempio.com" id="data">',
+      text: '<textarea rows="4" placeholder="Scrivi qui..." id="data"></textarea>',
+      vcard: `
+        <input type="text" placeholder="Nome Cognome" id="name">
+        <input type="tel" placeholder="Telefono" id="phone">
+        <input type="email" placeholder="Email" id="email">
+      `,
+      wifi: `
+        <input type="text" placeholder="SSID WiFi" id="ssid">
+        <input type="text" placeholder="Password" id="password">
+        <select id="encryption">
+          <option value="WPA">WPA/WPA2</option>
+          <option value="WEP">WEP</option>
+          <option value="">Nessuna</option>
+        </select>
+      `,
+      tel: '<input type="tel" placeholder="Numero di telefono" id="data">',
+      geo: `
+        <input type="text" placeholder="Latitudine" id="lat">
+        <input type="text" placeholder="Longitudine" id="lon">
+      `,
+      fiscalcode: '<input type="text" placeholder="Inserisci il codice fiscale" id="data">',
+      whatsapp: `
+        <input type="text" placeholder="Numero (es. 393123456789)" id="whatsnum">
+        <input type="text" placeholder="Messaggio" id="whatsmsg">
+      `
+    };
+
+    document.getElementById("qrType").addEventListener("change", e => {
+      inputFields.innerHTML = templates[e.target.value];
+    });
+    document.getElementById("qrType").dispatchEvent(new Event("change"));
+
+    let qr;
+
+    function generateQR() {
+      if (qr) qr.clear();
+      qrPreview.innerHTML = "";
+
+      const type = document.getElementById("qrType").value;
+      const color = document.getElementById("qrColor").value;
+      const gradient = document.getElementById("qrGradient").value;
+      const eye = document.getElementById("eyeStyle").value;
+      const dotShape = document.getElementById("dotShape").value;
+      const overallStyle = document.getElementById("overallStyle").value;
+      const transparent = document.getElementById("transparentBg").checked;
+      const logoFile = document.getElementById("qrLogo").files[0];
+
+      let value = "";
+      switch (type) {
+        case "url":
+        case "email":
+        case "text":
+        case "tel":
+        case "fiscalcode":
+          value = document.getElementById("data").value;
+          if (type === "email") value = `mailto:${value}`;
+          if (type === "tel") value = `tel:${value}`;
+          break;
+        case "vcard":
+          const name = document.getElementById("name").value;
+          const phone = document.getElementById("phone").value;
+          const email = document.getElementById("email").value;
+          value = `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+          break;
+        case "wifi":
+          const ssid = document.getElementById("ssid").value;
+          const pwd = document.getElementById("password").value;
+          const enc = document.getElementById("encryption").value;
+          value = `WIFI:T:${enc};S:${ssid};P:${pwd};;`;
+          break;
+        case "geo":
+          const lat = document.getElementById("lat").value;
+          const lon = document.getElementById("lon").value;
+          value = `geo:${lat},${lon}`;
+          break;
+        case "whatsapp":
+          const num = document.getElementById("whatsnum").value;
+          const msg = encodeURIComponent(document.getElementById("whatsmsg").value);
+          value = `https://wa.me/${num}?text=${msg}`;
+          break;
+      }
+
+      const options = {
+        width: 300,
+        height: 300,
+        data: value,
+        image: logoFile ? URL.createObjectURL(logoFile) : undefined,
+        dotsOptions: {
+          type: dotShape,
+          gradient: {
+            type: "linear",
+            colorStops: [
+              { offset: 0, color: color },
+              { offset: 1, color: gradient }
+            ]
+          },
+        },
+        backgroundOptions: {
+          color: transparent ? 'transparent' : '#ffffff'
+        },
+        cornersSquareOptions: { type: eye },
+        cornersDotOptions: { type: eye },
+      };
+
+      qr = new QRCodeStyling(options);
+      qr.append(qrPreview);
+    }
+
+    function downloadQR() {
+      const fileNameInput = document.getElementById('fileName').value.trim();
+      const fileName = fileNameInput ? `${fileNameInput}.png` : 'kodari-qr';
+      qr.download({ name: fileName });
+    }
+  </script>
+</body>
+</html>
